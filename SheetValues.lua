@@ -86,7 +86,7 @@
 	local AnticheatSheet = SheetValues.new("SPREADSHEET_ID")
 
 	local function PunishCheater(Player)
-		if AnticheatSheet.Values.FFlagPunishmentsDisabled then
+		if AnticheatSheet.Values.PunishmentsDisabled then
 			-- Punishments aren't enabled, don't punish
 			return
 		end
