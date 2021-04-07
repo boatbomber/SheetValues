@@ -43,6 +43,10 @@
 	gets the latest values of the sheet
 	(This is called automatically and is only exposed for critical cases)
 
+	function SheetManager:GetValue(ValueName, DefaultValue)
+	returns the Value or DefaultValue if the Value doesn't exist
+	(This is the same as doing `SheetManager.Values.ValueName or DefaultValue` and only exists for style purposes)
+
 	function SheetManager:Destroy()
 	cleans up the SheetManager
 
@@ -313,6 +317,10 @@ function SheetValues.new(SpreadId)
 			local httpSuccess, httpResult = self:_getFromHttp()
 			--print(httpSuccess,httpResult)
 		end
+	end
+
+	function SheetManager:GetValue(Name: string, Default: any)	
+		return self.Values[Name] or Default
 	end
 
 	function SheetManager:Destroy()
