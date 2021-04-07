@@ -190,6 +190,8 @@ function SheetValues.new(SpreadId)
 
 		local Values = string.split(csv, "\n")
 
+		local isChanged = false
+
 		for Row, Value in ipairs(Values) do
 			if Row == 1 then continue end -- Skip the header row of "Name,Type,Value"
 
@@ -201,9 +203,18 @@ function SheetValues.new(SpreadId)
 			--print("Components:",Name,Type,Value)
 
 			local Transformer = TypeTransformer[Type] or TypeTransformer.string
-			self.Values[Name] = Transformer(Value)
+			local FinalValue = Transformer(Value)
+
+			if self.Values[Name] ~= FinalValue then
+				isChanged = true
+			end
+
+			self.Values[Name] = FinalValue
 		end
-		UpdateEvent:Fire(self.Values)
+
+		if isChanged then
+			UpdateEvent:Fire(self.Values)
+		end
 	end
 
 	function SheetManager:_getFromHttp()
