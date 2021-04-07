@@ -36,14 +36,14 @@
 	API:
 	-------
 
-	function SheetValues.new(SpreadId)
+	function SheetValues.new(SpreadId: string)
 	returns a new SheetManager
 
 	function SheetManager:UpdateValues()
 	gets the latest values of the sheet
 	(This is called automatically and is only exposed for critical cases)
 
-	function SheetManager:GetValue(ValueName, DefaultValue)
+	function SheetManager:GetValue(ValueName: string, DefaultValue: any)
 	returns the Value or DefaultValue if the Value doesn't exist
 	(This is the same as doing `SheetManager.Values.ValueName or DefaultValue` and only exists for style purposes)
 
@@ -60,7 +60,7 @@
 	Name of the service used to retrieve the current SheetManager.Values (Google API, Datastore, Datastore Override, MsgService Subscription)
 	(Used for debugging)
 
-	RBXScriptSignal SheetManager.Updated(newValues)
+	RBXScriptSignal SheetManager.Updated(newValues: table)
 	Fires when SheetManager.Values is updated
 
 	Supported value Types (not case sensitive):
@@ -171,7 +171,7 @@ local TypeTransformer = {
 
 local SheetValues = {}
 
-function SheetValues.new(SpreadId)
+function SheetValues.new(SpreadId: string)
 
 	local UpdateEvent = Instance.new("BindableEvent")
 
@@ -187,7 +187,7 @@ function SheetValues.new(SpreadId)
 
 	}
 
-	function SheetManager:_setValues(csv, timestamp)
+	function SheetManager:_setValues(csv: string, timestamp: number)
 		--print("Values Updating!\n  Time:",timestamp,"\n  Values:",values)
 
 		self.LastUpdated = timestamp or self.LastUpdated
