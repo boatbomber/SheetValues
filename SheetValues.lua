@@ -178,7 +178,13 @@ local TypeTransformer = {
 local SheetValues = {}
 
 function SheetValues.new(SpreadId: string, SheetId: string)
+	assert(type(SpreadId)=="string", "Invalid SpreadId")
 
+	-- Default SheetId to 0 as that's Google's default SheetId
+	SheetId = (SheetId or "0")
+	
+	local GUID = SpreadId.."||"..SheetId
+								
 	local ChangedEvent = Instance.new("BindableEvent")
 
 	local SheetManager = {
@@ -189,12 +195,9 @@ function SheetValues.new(SpreadId: string, SheetId: string)
 		Values = {},
 
 		_ValueChangeEvents = {},
-		_DataStore = DatastoreService:GetDataStore(SpreadId, "SheetValues"),
+		_DataStore = DatastoreService:GetDataStore(GUID, "SheetValues"),
 		_Alive = true,
 	}
-
-	-- Default SheetId to 0 as that's Google's default SheetId
-	SheetId = (SheetId or "0")
 
 	function SheetManager:_setValues(csv: string, timestamp: number)
 		--print("Values Updating!\n  Time:",timestamp,"\n  Values:",values)
@@ -275,7 +278,7 @@ function SheetValues.new(SpreadId: string, SheetId: string)
 				if not s then warn(e) end
 
 				-- Send these values to all other servers
-				local s,e = pcall(MessagingService.PublishAsync, MessagingService, SpreadId, response.Body)
+				local s,e = pcall(MessagingService.PublishAsync, MessagingService, GUID, response.Body)
 				if not s then warn(e) end
 
 				return true, "Values updated"
@@ -363,7 +366,7 @@ function SheetValues.new(SpreadId: string, SheetId: string)
 	end
 
 	pcall(function()
-		SheetManager._MessageListener = MessagingService:SubscribeAsync(SpreadId, function(Msg)
+		SheetManager._MessageListener = MessagingService:SubscribeAsync(GUID, function(Msg)
 			if math.floor(Msg.Sent) > SheetManager.LastUpdated then
 				SheetManager.LastSource =  "MsgService Subscription"
 				SheetManager:_setValues(Msg.Data, math.floor(Msg.Sent))
