@@ -24,6 +24,10 @@
 	to read from. Pass that into `SheetValues.new("SPREADSHEET_ID")` and it will return
 	a SheetManager linked to that spreadsheet.
 
+	If you're using multiple sheets, the SheetId will be at the end of the url. Look for "#gid=" and
+	copy everything after the equals symbol.
+	> docs.google.com/spreadsheets/d/ALPHANUMERIC_SPREADSHEET_ID/edit#gid=NUMERICAL_GID
+
 	Your spreadsheet must be structured like this:
 
 	Name              Type              Value       (Recommend that you freeze Row 1)
@@ -36,7 +40,7 @@
 	API:
 	-------
 
-	function SheetValues.new(SpreadId: string)
+	function SheetValues.new(SpreadId: string [, SheetId: string])
 	returns a new SheetManager
 
 	function SheetManager:UpdateValues()
@@ -174,7 +178,7 @@ local TypeTransformer = {
 
 local SheetValues = {}
 
-function SheetValues.new(SpreadId: string)
+function SheetValues.new(SpreadId: string, SheetId: string)
 
 	local ChangedEvent = Instance.new("BindableEvent")
 
@@ -189,6 +193,9 @@ function SheetValues.new(SpreadId: string)
 		_DataStore = DatastoreService:GetDataStore(SpreadId, "SheetValues"),
 		_Alive = true,
 	}
+
+	-- Default SheetId to 0 as that's Google's default SheetId
+	SheetId = (SheetId or "0")
 
 	function SheetManager:_setValues(csv: string, timestamp: number)
 		--print("Values Updating!\n  Time:",timestamp,"\n  Values:",values)
@@ -234,7 +241,7 @@ function SheetValues.new(SpreadId: string)
 	function SheetManager:_getFromHttp()
 		-- Attempt to get values from Google's API
 		local success, response = pcall(HttpService.RequestAsync, HttpService, {
-			Url = string.format("https://docs.google.com/spreadsheets/d/%s/gviz/tq?tqx=out:csv", SpreadId),
+			Url = string.format("https://docs.google.com/spreadsheets/d/%s/gviz/tq?tqx=out:csv&gid=%s", SpreadId, SheetId),
 			Method = "GET",
 			Headers = {},
 		})
