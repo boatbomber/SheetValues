@@ -47,6 +47,9 @@
 	returns the Value or DefaultValue if the Value doesn't exist
 	(This is the same as doing `SheetManager.Values.ValueName or DefaultValue` and only exists for style purposes)
 
+	function SheetManager:GetValueChangedSignal(ValueName: string)
+	returns a RBXScriptSignal that fires when the given Value changes, passing two arguements in the fired event (NewValue, OldValue)
+
 	function SheetManager:Destroy()
 	cleans up the SheetManager
 
@@ -60,8 +63,8 @@
 	Name of the service used to retrieve the current SheetManager.Values (Google API, Datastore, Datastore Override, MsgService Subscription)
 	(Used for debugging)
 
-	RBXScriptSignal SheetManager.Updated(newValues: table)
-	Fires when SheetManager.Values is updated
+	RBXScriptSignal SheetManager.Changed(newValues: table)
+	Fires when SheetManager.Values is changed
 
 	Supported value Types (not case sensitive):
 	- number
@@ -76,7 +79,7 @@
 
 	Example:
 	-------
-	
+
 	## Example:
 
 	A good use of live updating values is developing a anticheat system.
@@ -90,11 +93,11 @@
 	local AnticheatSheet = SheetValues.new("SPREADSHEET_ID")
 
 	local function PunishCheater(Player)
-		if AnticheatSheet.Values.PunishmentsDisabled then
+		if AnticheatSheet.Values.FFlagPunishmentsDisabled then
 			-- Punishments aren't enabled, don't punish
 			return
 		end
-		
+
 		Player:Kick("Cheating")
 	end
 
@@ -173,18 +176,18 @@ local SheetValues = {}
 
 function SheetValues.new(SpreadId: string)
 
-	local UpdateEvent = Instance.new("BindableEvent")
+	local ChangedEvent = Instance.new("BindableEvent")
 
 	local SheetManager = {
-		Updated = UpdateEvent.Event,
+		Changed = ChangedEvent.Event,
 
 		LastUpdated = 0,
 		LastSource = "",
 		Values = {},
 
+		_ValueChangeEvents = {},
 		_DataStore = DatastoreService:GetDataStore(SpreadId, "SheetValues"),
 		_Alive = true,
-
 	}
 
 	function SheetManager:_setValues(csv: string, timestamp: number)
@@ -208,16 +211,23 @@ function SheetValues.new(SpreadId: string)
 
 			local Transformer = TypeTransformer[Type] or TypeTransformer.string
 			local FinalValue = Transformer(Value)
+			local CurrentValue = self.Values[Name]
 
-			if self.Values[Name] ~= FinalValue then
+			if CurrentValue ~= FinalValue then
 				isChanged = true
+
+				self.Values[Name] = FinalValue
+
+				local ValueChangeEvent = self._ValueChangeEvents[Name]
+				if ValueChangeEvent then
+					ValueChangeEvent:Fire(FinalValue,CurrentValue)
+				end
 			end
 
-			self.Values[Name] = FinalValue
 		end
 
 		if isChanged then
-			UpdateEvent:Fire(self.Values)
+			ChangedEvent:Fire(self.Values)
 		end
 	end
 
@@ -319,15 +329,30 @@ function SheetValues.new(SpreadId: string)
 		end
 	end
 
-	function SheetManager:GetValue(Name: string, Default: any)	
+	function SheetManager:GetValue(Name: string, Default: any)
 		return self.Values[Name] or Default
+	end
+
+	function SheetManager:GetValueChangedSignal(Name: string)
+		local ValueChangeEvent = self._ValueChangeEvents[Name]
+		if not ValueChangeEvent then
+			ValueChangeEvent = Instance.new("BindableEvent")
+			self._ValueChangeEvents[Name] = ValueChangeEvent
+		end
+
+		return ValueChangeEvent.Event
 	end
 
 	function SheetManager:Destroy()
 		if SheetManager._MessageListener then
 			SheetManager._MessageListener:Disconnect()
 		end
-		UpdateEvent:Destroy()
+
+		ChangedEvent:Destroy()
+		for _,Event in pairs(self._ValueChangeEvents) do
+			Event:Destroy()
+		end
+
 		table.clear(self)
 	end
 
