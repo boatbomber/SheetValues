@@ -118,6 +118,8 @@ local HttpService = game:GetService("HttpService")
 local DatastoreService = game:GetService("DataStoreService")
 local MessagingService = game:GetService("MessagingService")
 
+local SHA1 = require(script.SHA1)
+
 local TypeTransformer = {
 	["array"] = function(v)
 		return string.split(v,",")
@@ -177,13 +179,13 @@ local TypeTransformer = {
 
 local SheetValues = {}
 
-function SheetValues.new(SpreadId: string, SheetId: string)
+function SheetValues.new(SpreadId: string, SheetId: string?)
 	assert(type(SpreadId)=="string", "Invalid SpreadId")
 
 	-- Default SheetId to 0 as that's Google's default SheetId
 	SheetId = (SheetId or "0")
 	
-	local GUID = SpreadId.."||"..SheetId
+	local GUID = SHA1(SpreadId.."||"..SheetId)
 								
 	local ChangedEvent = Instance.new("BindableEvent")
 
