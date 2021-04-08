@@ -85,8 +85,6 @@
 	Example:
 	-------
 
-	## Example:
-
 	A good use of live updating values is developing a anticheat system.
 	You can flip a Punishments FFlag so that you can test various methods and thresholds
 	without punishing false positives while you work. Additionally, you can use the
