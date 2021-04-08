@@ -16,19 +16,20 @@
 	Getting started is really easy. Gone are the days of API keys and custom sheet macro scripts.
 	All you need is the share link, set to "Anyone on the internet with this link can view". Copy that link.
 
-
 	The link will look something like this:
-	> docs.google .com/spreadsheets/d/ALPHANUMERIC_SPREADSHEET_ID/edit?usp=sharing
+	> docs.google .com/spreadsheets/d/ALPHANUMERIC_SPREAD_ID/edit?usp=sharing
 
-	Copy the big spreadsheet id out of that link, as that's how our system will know what spreadsheet
-	to read from. Pass that into `SheetValues.new("SPREADSHEET_ID")` and it will return
-	a SheetManager linked to that spreadsheet.
+	Copy the big spread id out of that link, as that's how our system will know what spread to read from.
 
-	If you're using multiple sheets, the SheetId will be at the end of the url. Look for "#gid=" and
+	If you're using multiple sheets in a single spread, the SheetId will be at the end of the main url. Look for "#gid=" and
 	copy everything after the equals symbol.
-	> docs.google.com/spreadsheets/d/ALPHANUMERIC_SPREADSHEET_ID/edit#gid=NUMERICAL_GID
+	> docs.google .com/spreadsheets/d/ALPHANUMERIC_SPREAD_ID/edit#gid=NUMERIC_SHEET_ID
+	
+	Pass that into `SheetValues.new("ALPHANUMERIC_SPREAD_ID", "NUMERIC_SHEET_ID")` and it will return
+	a SheetManager linked to that sheet. Note that the SheetId parameter is optional and will default to
+	the first (or only) sheet in your spread.
 
-	Your spreadsheet must be structured like this:
+	Your sheet must be structured like this:
 
 	Name              Type              Value       (Recommend that you freeze Row 1)
 	SampleValueName   Vector3           10, 2, 6.2
