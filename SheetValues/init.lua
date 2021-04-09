@@ -29,13 +29,13 @@
 	a SheetManager linked to that sheet. Note that the SheetId parameter is optional and will default to
 	the first (or only) sheet in your spread.
 
-	Your sheet structure is not strictly enforced, but it is strongly recommended that you have a Name column so
+	Your sheet structure is not strictly enforced, but it is STRONGLY recommended that you have a Name column so
 	that it can key your values by Name rather than Row number, making it much easier to work with.
 
-	If you have a boolean or number value, it will attempt to convert the string into your intended value.
-	To create special types, you can explicitly mark them by having the value be "Vector3(1,0,3)"
+	If you have a boolean or number property, it will attempt to convert the string into your intended datatype.
+	To create special types, you can explicitly mark them by having the property be "Type(val)", like "Vector3(1,0,3)"
 
-	Supported explicit value Types (not case sensitive):
+	Supported explicit property Types (not case sensitive):
 	- string (for ensuring a number/boolean remains a string)
 	- array
 	- dictionary
@@ -46,13 +46,13 @@
 
 	Sample Sheet:
 
-	Name                Value                                             Metadata      (Recommend that you freeze Row 1)
-	BoostDirection      Vector3(10, 2, 6.2)                               DescriptorString
-	SpeedMultiplier     0.3                                               CouldEvenPutJSONHereForYourself,tbh
-	DebugEnabled        TRUE                                              MetadataThings
-	ArrayOfStrings      array(firstIndex,secondIndex,thirdIndex)          Point is, you can add any columns or values
-	DictOfKeyedStrings  dictionary(key1=stringvalue,key2=anotherstring)   It's awesome!
-
+	Name                Prop                                              SecondaryProp           AnyPropNameYouLike        [Recommend that you freeze Row 1]
+	BoostDirection      Vector3(10, 2, 6.2)                               100                     10000
+	SpeedMultiplier     0.3 [will autodetect and convert to number]       1                       FALSE
+	DebugEnabled        TRUE [will autodetect and convert to boolean]     JSONstring              you get the point
+	DontAutodetect      string(TRUE) [will NOT convert to boolean]        TRUE                    you can add as many columns as you need
+	ArrayOfStrings      array(firstIndex,secondIndex,thirdIndex)          Vector2(5,2)            and easily set the value type
+	DictOfKeyedStrings  dictionary(key1=stringvalue,key2=anotherstring)   UDim2(0.3,-10,0,350)    it's great!
 
 	API:
 	-------
@@ -84,24 +84,29 @@
 	Name of the service used to retrieve the current SheetManager.Values (Google API, Datastore, Datastore Override, MsgService Subscription)
 	(Used for debugging)
 
-	RBXScriptSignal SheetManager.Changed(newValues: table)
+	RBXScriptSignal SheetManager.Changed(NewValues: table)
 	Fires when SheetManager.Values is changed
 
 	Example:
 	-------
 
-	A good use of live updating values is developing a anticheat system.
-	You can flip a Punishments FFlag so that you can test various methods and thresholds
-	without punishing false positives while you work. Additionally, you can use the
-	sheet values to tweak and swap those methods and thresholds without needing to
-	restart the servers, allowing you to gather analytics and polish your system with ease.
+	A good use of these live updating values is developing a anticheat system.
+	You can flip a have a Value with a property like PunishmentsEnabled so that you can
+	test various methods and thresholds without punishing false positives while you work.
+	Additionally, you can add properties to that Value for thresholds and cheat parameters,
+	so you can fine tune your system without needing to restart the game servers, allowing
+	you to gather analytics and polish your system with ease.
 
+	Sheet used by the Example Code:
+
+	Name                        PunishmentEnabled      Threshold
+	SheetCheat                  FALSE                  35
 
 	local SheetValues = require(script.SheetValues)
 	local AnticheatSheet = SheetValues.new("SPREADSHEET_ID")
 
 	local function PunishCheater(Player)
-		if AnticheatSheet.Values.FFlagPunishmentsDisabled.Value then
+		if not AnticheatSheet.Values.SpeedCheat.PunishmentEnabled then
 			-- Punishments aren't enabled, don't punish
 			return
 		end
@@ -110,7 +115,7 @@
 	end
 
 	local function CheckSpeedCheat(Player)
-		if Speeds[Player] > AnticheatSheet.Values.SpeedCheatThreshold.Value then
+		if Speeds[Player] > AnticheatSheet.Values.SpeedCheat.Threshold then
 			SendAnalytics("SpeedTriggered", Speeds[Player])
 			PunishCheater(Player)
 		end
