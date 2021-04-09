@@ -65,6 +65,12 @@
 	- Vector2
 	- UDim2
 	- UDim
+	- Color3 (0-1)
+	- RGB (0-255)
+	- BrickColor
+	- CFrame
+	- Enum
+	- Rect
 
 	Sample Sheet:
 

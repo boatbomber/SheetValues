@@ -59,4 +59,44 @@ return {
 			tonumber(comps[2]) or 0
 		)
 	end,
+	["color3"] = function(v)
+		local comps = string.split(v,",")
+		return Color3.new(
+			tonumber(comps[1]) or 0,
+			tonumber(comps[2]) or 0,
+			tonumber(comps[3]) or 0,
+		)
+	end,
+	["brickcolor"] = function(v)
+		return BrickColor.new(v)
+	end,
+	["rgb"] = function(v)
+		local comps = string.split(v,",")
+		return Color3.fromRGB(
+			tonumber(comps[1]) or 0,
+			tonumber(comps[2]) or 0,
+			tonumber(comps[3]) or 0,
+		)
+	end,
+	["cframe"] = function(v)
+		local comps = string.split(v,",")
+		return CFrame.new(
+			tonumber(comps[1]) or 0,
+			tonumber(comps[2]) or 0,
+			tonumber(comps[3]) or 0,
+		)
+	end,
+	["enum"] = function(v)
+		local comps = string.split(v,".")
+		return Enum[comps[1]][comps[2]]
+	end,
+	["rect"] = function(v)
+		local comps = string.split(v,",")
+		return Rect.new(
+			tonumber(comps[1]) or 0,
+			tonumber(comps[2]) or 0,
+			tonumber(comps[3]) or 0,
+			tonumber(comps[4]) or 0
+		)
+	end,
 }
