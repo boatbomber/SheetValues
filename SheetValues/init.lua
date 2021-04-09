@@ -317,7 +317,12 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 			-- Parse the typed values into dictionary based on the header row keys
 			local Value = table.create(#Components)
 			for i, Comp in ipairs(Components) do
-				Value[ColumnToKey[i]] = ConvertTyped(Comp)
+				local key = ColumnToKey[i]	
+				local typedComp = ConvertTyped(Comp)
+									
+				if (key == "") then continue end									
+													
+				Value[key] = typedComp
 			end
 
 			local Name = Value.Name or Value.name or string.format("%d", Row) -- Index by name, or by row if no names exist
