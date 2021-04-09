@@ -245,7 +245,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 	function SheetManager:_getFromHttp()
 		-- Attempt to get values from Google's API
 		local success, response = pcall(HttpService.RequestAsync, HttpService, {
-			Url = string.format("https://docs.google.com/spreadsheets/d/%s/gviz/tq?tqx=out:csv&gid=%s", SpreadId, SheetId),
+			Url = string.format("https://docs.google.com/spreadsheets/d/%s/gviz/tq?tqx=out:csv%headers=1&gid=%s", SpreadId, SheetId),
 			Method = "GET",
 			Headers = {},
 		})
