@@ -217,11 +217,21 @@ local function DictEquals(a, b)
 	if type(a) ~= type(b) then return false end
 
 	for k, v in pairs(a) do
-		if b[k] ~= v then return false end
+		if (type(v)=="table") and (not DictEquals(b[k], v)) then
+			return false
+		end
+		if (b[k] ~= v) then
+			return false
+		end
 	end
 
 	for k, v in pairs(b) do
-		if a[k] ~= v then return false end
+		if (type(v)=="table") and (not DictEquals(a[k], v)) then
+			return false
+		end
+		if (a[k] ~= v) then
+			return false
+		end
 	end
 
 	return true
