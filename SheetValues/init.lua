@@ -24,19 +24,35 @@
 	If you're using multiple sheets in a single spread, the SheetId will be at the end of the main url. Look for "#gid=" and
 	copy everything after the equals symbol.
 	> docs.google .com/spreadsheets/d/ALPHANUMERIC_SPREAD_ID/edit#gid=NUMERIC_SHEET_ID
-	
+
 	Pass that into `SheetValues.new("ALPHANUMERIC_SPREAD_ID", "NUMERIC_SHEET_ID")` and it will return
 	a SheetManager linked to that sheet. Note that the SheetId parameter is optional and will default to
 	the first (or only) sheet in your spread.
 
-	Your sheet must be structured like this:
+	Your sheet structure is not strictly enforced, but it is strongly recommended that you have a Name column so
+	that it can key your values by Name rather than Row number, making it much easier to work with.
 
-	Name              Type              Value       (Recommend that you freeze Row 1)
-	SampleValueName   Vector3           10, 2, 6.2
-	AnotherValueName  number            0.3
-	FlagValueName     boolean           true
-	ArrayExampleName  array             firstIndex,secondIndex,thirdIndex
-	ArrayExampleName  dictionary        key1=stringvalue,key2=anotherstring,key1=anothaone
+	If you have a boolean or number value, it will attempt to convert the string into your intended value.
+	To create special types, you can explicitly mark them by having the value be "Vector3(1,0,3)"
+
+	Supported explicit value Types (not case sensitive):
+	- string (for ensuring a number/boolean remains a string)
+	- array
+	- dictionary
+	- Vector3
+	- Vector2
+	- UDim2
+	- UDim
+
+	Sample Sheet:
+
+	Name                Value                                             Metadata      (Recommend that you freeze Row 1)
+	BoostDirection      Vector3(10, 2, 6.2)                               DescriptorString
+	SpeedMultiplier     0.3                                               CouldEvenPutJSONHereForYourself,tbh
+	DebugEnabled        TRUE                                              MetadataThings
+	ArrayOfStrings      array(firstIndex,secondIndex,thirdIndex)          Point is, you can add any columns or values
+	DictOfKeyedStrings  dictionary(key1=stringvalue,key2=anotherstring)   It's awesome!
+
 
 	API:
 	-------
@@ -71,17 +87,6 @@
 	RBXScriptSignal SheetManager.Changed(newValues: table)
 	Fires when SheetManager.Values is changed
 
-	Supported value Types (not case sensitive):
-	- number
-	- boolean
-	- array
-	- dictionary
-	- string
-	- Vector3
-	- Vector2
-	- UDim2
-	- UDim
-
 	Example:
 	-------
 
@@ -96,7 +101,7 @@
 	local AnticheatSheet = SheetValues.new("SPREADSHEET_ID")
 
 	local function PunishCheater(Player)
-		if AnticheatSheet.Values.FFlagPunishmentsDisabled then
+		if AnticheatSheet.Values.FFlagPunishmentsDisabled.Value then
 			-- Punishments aren't enabled, don't punish
 			return
 		end
@@ -105,7 +110,7 @@
 	end
 
 	local function CheckSpeedCheat(Player)
-		if Speeds[Player] > AnticheatSheet.Values.SpeedCheatThreshold then
+		if Speeds[Player] > AnticheatSheet.Values.SpeedCheatThreshold.Value then
 			SendAnalytics("SpeedTriggered", Speeds[Player])
 			PunishCheater(Player)
 		end
@@ -177,6 +182,51 @@ local TypeTransformer = {
 	end,
 }
 
+local function ConvertTyped(Input)
+	local lowerInput = string.lower(Input)
+
+	-- Check if it's explicitly a string first
+	if string.match(lowerInput, "^string%(") then
+		return string.gsub(string.sub(lowerInput, 8), "%)$","")
+	end
+
+	-- Check for boolean input
+	if lowerInput == "true" or lowerInput == "false" then
+		return lowerInput == "true"
+	end
+
+	-- Check for number input
+	local n = tonumber(Input)
+	if tostring(n) == Input then
+		return n
+	end
+
+	-- Check for explicitly typed (ex: "Vector3(1,1,1)", "UDim2(0,100,0,80)")
+	for Type, Transformer in pairs(TypeTransformer) do
+		local Pattern = "^"..Type.."%("
+		if string.match(lowerInput, Pattern) then
+			local trimInput = string.gsub(string.sub(Input, #Pattern-1), "%)$","")
+			return Transformer(trimInput)
+		end
+	end
+
+	return Input
+end
+
+local function DictEquals(a, b)
+	if type(a) ~= type(b) then return false end
+
+	for k, v in pairs(a) do
+		if b[k] ~= v then return false end
+	end
+
+	for k, v in pairs(b) do
+		if a[k] ~= v then return false end
+	end
+
+	return true
+end
+
 local SheetValues = {}
 
 function SheetValues.new(SpreadId: string, SheetId: string?)
@@ -184,9 +234,9 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 	-- Default SheetId to 0 as that's Google's default SheetId
 	SheetId = (SheetId or "0")
-	
+
 	local GUID = SHA1(SpreadId.."||"..SheetId)
-								
+
 	local ChangedEvent = Instance.new("BindableEvent")
 
 	local SheetManager = {
@@ -202,36 +252,48 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 	}
 
 	function SheetManager:_setValues(csv: string, timestamp: number)
-		--print("Values Updating!\n  Time:",timestamp,"\n  Values:",values)
+		--print("Time:",timestamp,"\nCSV:\n"..csv)
 
 		self.LastUpdated = timestamp or self.LastUpdated
 
-		local Values = string.split(csv, "\n")
+		local Rows = string.split(csv, "\n")
+		--print("CSV Split:",Rows)
 
 		local isChanged = false
 
-		for Row, Value in ipairs(Values) do
-			if Row == 1 then continue end -- Skip the header row of "Name,Type,Value"
+		local ColumnToKey = table.create(3)
 
-			local Components = string.split(Value, [[","]])
-			local Name = string.gsub(Components[1], "^\"","")
-			local Type = string.lower(Components[2])
-			local Value = string.gsub(Components[3], "\"$","")
+		for Row, RawValue in ipairs(Rows) do
+			local Components = string.split(RawValue, [[","]])
+			-- Trim the trailing " chars
+			Components[1] = string.gsub(Components[1], "^\"","")
+			Components[#Components] = string.gsub(Components[#Components], "\"$","")
 
-			--print("Components:",Name,Type,Value)
+			if Row == 1 then
+				-- Parse out the keys from the header row
+				for i, Comp in ipairs(Components) do
+					ColumnToKey[i] = Comp
+				end
+				continue
+			end
 
-			local Transformer = TypeTransformer[Type] or TypeTransformer.string
-			local FinalValue = Transformer(Value)
-			local CurrentValue = self.Values[Name]
+			-- Parse the typed values into dictionary based on the header row keys
+			local Value = table.create(#Components)
+			for i, Comp in ipairs(Components) do
+				Value[ColumnToKey[i]] = ConvertTyped(Comp)
+			end
 
-			if CurrentValue ~= FinalValue then
+			local Name = Value.Name or Value.name or string.format("%d", Row) -- Index by name, or by row if no names exist
+			local OldValue = self.Values[Name]
+
+			if not DictEquals(OldValue, Value) then
 				isChanged = true
 
-				self.Values[Name] = FinalValue
+				self.Values[Name] = Value
 
 				local ValueChangeEvent = self._ValueChangeEvents[Name]
 				if ValueChangeEvent then
-					ValueChangeEvent:Fire(FinalValue,CurrentValue)
+					ValueChangeEvent:Fire(Value,OldValue)
 				end
 			end
 
