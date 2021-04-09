@@ -29,10 +29,32 @@
 	a SheetManager linked to that sheet. Note that the SheetId parameter is optional and will default to
 	the first (or only) sheet in your spread.
 
-	Your sheet structure is not strictly enforced, but it is STRONGLY recommended that you have a Name column so
-	that it can key your values by Name rather than Row number, making it much easier to work with.
+	What should your Google Sheet look like? How does it translate into Values? Here's the structure:
+	The first row of the Sheet is the Header. This row will NOT become a Value, rather it defines how we parse
+	the subsequent rows into Values. Each entry into row 1 becomes the key for that column, which is called a Property.
 
-	If you have a boolean or number property, it will attempt to convert the string into your intended datatype.
+	Example:
+	Name          PropertyName     AnotherProp
+	TestValue     100              true
+	NextValue     300              false
+
+	This results in two Values being stored and structured like so:
+	SheetManager.Values = {
+		["TestValue"] = {
+			PropertyName = 100,
+			AnotherProp = true
+		},
+		["NextValue"] = {
+			PropertyName = 300,
+			AnotherProp = false
+		},
+	}
+	
+	It's not strictly enforced, but it is STRONGLY recommended that you have a "Name" Property so
+	that it will index your values by Name (will use row number if no Name prop exists), as it is much
+	easier to for you to work with.
+
+	If you have a boolean or number entered, it will attempt to convert the string into your intended datatype.
 	To create special types, you can explicitly mark them by having the property be "Type(val)", like "Vector3(1,0,3)"
 
 	Supported explicit property Types (not case sensitive):
@@ -69,7 +91,7 @@
 	(This is the same as doing `SheetManager.Values.ValueName or DefaultValue` and only exists for style purposes)
 
 	function SheetManager:GetValueChangedSignal(ValueName: string)
-	returns a RBXScriptSignal that fires when the given Value changes, passing two arguements in the fired event (NewValue, OldValue)
+	returns a RBXScriptSignal that fires when the given Value changes, passing two arguments in the fired event (NewValue, OldValue)
 
 	function SheetManager:Destroy()
 	cleans up the SheetManager
