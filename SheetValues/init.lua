@@ -113,16 +113,16 @@
 	-------
 
 	A good use of these live updating values is developing a anticheat system.
-	You can flip a have a Value with a property like PunishmentsEnabled so that you can
+	You can create Values with properties like PunishmentsEnabled so that you can
 	test various methods and thresholds without punishing false positives while you work.
-	Additionally, you can add properties to that Value for thresholds and cheat parameters,
+	Additionally, you can add properties to the Values for thresholds and cheat parameters,
 	so you can fine tune your system without needing to restart the game servers, allowing
 	you to gather analytics and polish your system with ease.
 
 	Sheet used by the Example Code:
 
 	Name                        PunishmentEnabled      Threshold
-	SheetCheat                  FALSE                  35
+	SpeedCheat                  FALSE                  35
 
 	local SheetValues = require(script.SheetValues)
 	local AnticheatSheet = SheetValues.new("SPREADSHEET_ID")
