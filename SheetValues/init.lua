@@ -29,9 +29,11 @@
 	a SheetManager linked to that sheet. Note that the SheetId parameter is optional and will default to
 	the first (or only) sheet in your spread.
 
-	What should your Google Sheet look like? How does it translate into Values? Here's the structure:
+	What should your Google Sheet look like?
+	Well, rows are turned into Values with each column entry being a Property of the Value.
+	Here's the structure:
 	The first row of the Sheet is the Header. This row will NOT become a Value, rather it defines how we parse
-	the subsequent rows into Values. Each entry into row 1 becomes the key for that column, which is called a Property.
+	the subsequent rows into Values. Each entry into row 1 becomes the key for that column (Property).
 
 	Example:
 	Name          PropertyName     AnotherProp
