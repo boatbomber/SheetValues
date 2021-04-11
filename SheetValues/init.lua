@@ -24,19 +24,65 @@
 	If you're using multiple sheets in a single spread, the SheetId will be at the end of the main url. Look for "#gid=" and
 	copy everything after the equals symbol.
 	> docs.google .com/spreadsheets/d/ALPHANUMERIC_SPREAD_ID/edit#gid=NUMERIC_SHEET_ID
-	
+
 	Pass that into `SheetValues.new("ALPHANUMERIC_SPREAD_ID", "NUMERIC_SHEET_ID")` and it will return
 	a SheetManager linked to that sheet. Note that the SheetId parameter is optional and will default to
 	the first (or only) sheet in your spread.
 
-	Your sheet must be structured like this:
+	What should your Google Sheet look like?
+	Well, rows are turned into Values with each column entry being a Property of the Value.
+	Here's the structure:
+	The first row of the Sheet is the Header. This row will NOT become a Value, rather it defines how we parse
+	the subsequent rows into Values. Each entry into row 1 becomes the key for that column (Property).
 
-	Name              Type              Value       (Recommend that you freeze Row 1)
-	SampleValueName   Vector3           10, 2, 6.2
-	AnotherValueName  number            0.3
-	FlagValueName     boolean           true
-	ArrayExampleName  array             firstIndex,secondIndex,thirdIndex
-	ArrayExampleName  dictionary        key1=stringvalue,key2=anotherstring,key1=anothaone
+	Example:
+	Name          PropertyName     AnotherProp
+	TestValue     100              true
+	NextValue     300              false
+
+	This results in two Values being stored and structured like so:
+	SheetManager.Values = {
+		["TestValue"] = {
+			PropertyName = 100,
+			AnotherProp = true
+		},
+		["NextValue"] = {
+			PropertyName = 300,
+			AnotherProp = false
+		},
+	}
+	
+	It's not strictly enforced, but it is STRONGLY recommended that you have a "Name" Property so
+	that it will index your values by Name (will use row number if no Name prop exists), as it is much
+	easier to for you to work with.
+
+	If you have a boolean or number entered, it will attempt to convert the string into your intended datatype.
+	To create special types, you can explicitly mark them by having the property be "Type(val)", like "Vector3(1,0,3)"
+
+	Supported explicit property Types (not case sensitive):
+	- string (for ensuring a number/boolean remains a string)
+	- array
+	- dictionary
+	- Vector3
+	- Vector2
+	- UDim2
+	- UDim
+	- Color3 (0-1)
+	- RGB (0-255)
+	- BrickColor
+	- CFrame
+	- Enum
+	- Rect
+
+	Sample Sheet:
+
+	Name                Prop                                              SecondaryProp           AnyPropNameYouLike        [Recommend that you freeze Row 1]
+	BoostDirection      Vector3(10, 2, 6.2)                               100                     10000
+	SpeedMultiplier     0.3 [will autodetect and convert to number]       1                       FALSE
+	DebugEnabled        TRUE [will autodetect and convert to boolean]     JSONstring              you get the point
+	DontAutodetect      string(TRUE) [will NOT convert to boolean]        TRUE                    you can add as many columns as you need
+	ArrayOfStrings      array(firstIndex,secondIndex,thirdIndex)          Vector2(5,2)            and easily set the value type
+	DictOfKeyedStrings  dictionary(key1=stringvalue,key2=anotherstring)   UDim2(0.3,-10,0,350)    it's great!
 
 	API:
 	-------
@@ -53,7 +99,7 @@
 	(This is the same as doing `SheetManager.Values.ValueName or DefaultValue` and only exists for style purposes)
 
 	function SheetManager:GetValueChangedSignal(ValueName: string)
-	returns a RBXScriptSignal that fires when the given Value changes, passing two arguements in the fired event (NewValue, OldValue)
+	returns a RBXScriptSignal that fires when the given Value changes, passing two arguments in the fired event (NewValue, OldValue)
 
 	function SheetManager:Destroy()
 	cleans up the SheetManager
@@ -68,35 +114,29 @@
 	Name of the service used to retrieve the current SheetManager.Values (Google API, Datastore, Datastore Override, MsgService Subscription)
 	(Used for debugging)
 
-	RBXScriptSignal SheetManager.Changed(newValues: table)
+	RBXScriptSignal SheetManager.Changed(NewValues: table)
 	Fires when SheetManager.Values is changed
-
-	Supported value Types (not case sensitive):
-	- number
-	- boolean
-	- array
-	- dictionary
-	- string
-	- Vector3
-	- Vector2
-	- UDim2
-	- UDim
 
 	Example:
 	-------
 
-	A good use of live updating values is developing a anticheat system.
-	You can flip a Punishments FFlag so that you can test various methods and thresholds
-	without punishing false positives while you work. Additionally, you can use the
-	sheet values to tweak and swap those methods and thresholds without needing to
-	restart the servers, allowing you to gather analytics and polish your system with ease.
+	A good use of these live updating values is developing a anticheat system.
+	You can create Values with properties like PunishmentsEnabled so that you can
+	test various methods and thresholds without punishing false positives while you work.
+	Additionally, you can add properties to the Values for thresholds and cheat parameters,
+	so you can fine tune your system without needing to restart the game servers, allowing
+	you to gather analytics and polish your system with ease.
 
+	Sheet used by the Example Code:
+
+	Name                        PunishmentEnabled      Threshold
+	SpeedCheat                  FALSE                  35
 
 	local SheetValues = require(script.SheetValues)
 	local AnticheatSheet = SheetValues.new("SPREADSHEET_ID")
 
 	local function PunishCheater(Player)
-		if AnticheatSheet.Values.FFlagPunishmentsDisabled then
+		if not AnticheatSheet.Values.SpeedCheat.PunishmentEnabled then
 			-- Punishments aren't enabled, don't punish
 			return
 		end
@@ -105,7 +145,7 @@
 	end
 
 	local function CheckSpeedCheat(Player)
-		if Speeds[Player] > AnticheatSheet.Values.SpeedCheatThreshold then
+		if Speeds[Player] > AnticheatSheet.Values.SpeedCheat.Threshold then
 			SendAnalytics("SpeedTriggered", Speeds[Player])
 			PunishCheater(Player)
 		end
@@ -119,63 +159,62 @@ local DatastoreService = game:GetService("DataStoreService")
 local MessagingService = game:GetService("MessagingService")
 
 local SHA1 = require(script.SHA1)
+local TypeTransformer = require(script.TypeTransformer)
 
-local TypeTransformer = {
-	["array"] = function(v)
-		return string.split(v,",")
-	end,
-	["dictionary"] = function(v)
-		local values = string.split(v,",")
-		local dict = table.create(#values)
+local function ConvertTyped(Input)
+	local lowerInput = string.lower(Input)
 
-		for _,value in ipairs(values) do
-			local components = string.split(value,"=")
-			dict[string.gsub(string.gsub(components[1],"^ ","")," $","")] = string.gsub(components[2],"^ ","")
+	-- Check if it's explicitly a string first
+	if string.match(lowerInput, "^string%(") then
+		return string.gsub(string.sub(lowerInput, 8), "%)$","")
+	end
+
+	-- Check for boolean input
+	if lowerInput == "true" or lowerInput == "false" then
+		return lowerInput == "true"
+	end
+
+	-- Check for number input
+	local n = tonumber(Input)
+	if tostring(n) == Input then
+		return n
+	end
+
+	-- Check for explicitly typed (ex: "Vector3(1,1,1)", "UDim2(0,100,0,80)")
+	for Type, Transformer in pairs(TypeTransformer) do
+		local Pattern = "^"..Type.."%("
+		if string.match(lowerInput, Pattern) then
+			local trimInput = string.gsub(string.sub(Input, #Pattern-1), "%)$","")
+			return Transformer(trimInput)
 		end
+	end
 
-		return dict
-	end,
-	["number"] = function(v)
-		return tonumber(v)
-	end,
-	["boolean"] = function(v)
-		return string.lower(v)=="true" and true or false
-	end,
-	["string"] = function(v)
-		return tostring(v)
-	end,
-	["vector3"] = function(v)
-		local comps = string.split(v,",")
-		return Vector3.new(
-			tonumber(comps[1]) or 0,
-			tonumber(comps[2]) or 0,
-			tonumber(comps[3]) or 0
-		)
-	end,
-	["vector2"] = function(v)
-		local comps = string.split(v,",")
-		return Vector2.new(
-			tonumber(comps[1]) or 0,
-			tonumber(comps[2]) or 0
-		)
-	end,
-	["udim2"] = function(v)
-		local comps = string.split(v,",")
-		return UDim2.new(
-			tonumber(comps[1]) or 0,
-			tonumber(comps[2]) or 0,
-			tonumber(comps[3]) or 0,
-			tonumber(comps[4]) or 0
-		)
-	end,
-	["udim"] = function(v)
-		local comps = string.split(v,",")
-		return UDim.new(
-			tonumber(comps[1]) or 0,
-			tonumber(comps[2]) or 0
-		)
-	end,
-}
+	return Input
+end
+
+local function DictEquals(a, b)
+	if type(a) ~= type(b) then return false end
+
+	for k, v in pairs(a) do
+		if (type(v)=="table") and (not DictEquals(b[k], v)) then
+			return false
+		end
+		if (b[k] ~= v) then
+			return false
+		end
+	end
+
+	for k, v in pairs(b) do
+		if (type(v)=="table") and (not DictEquals(a[k], v)) then
+			return false
+		end
+		if (a[k] ~= v) then
+			return false
+		end
+	end
+
+	return true
+end
 
 local SheetValues = {}
 
@@ -184,9 +223,9 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 	-- Default SheetId to 0 as that's Google's default SheetId
 	SheetId = (SheetId or "0")
-	
+
 	local GUID = SHA1(SpreadId.."||"..SheetId)
-								
+
 	local ChangedEvent = Instance.new("BindableEvent")
 
 	local SheetManager = {
@@ -202,36 +241,53 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 	}
 
 	function SheetManager:_setValues(csv: string, timestamp: number)
-		--print("Values Updating!\n  Time:",timestamp,"\n  Values:",values)
+		--print("Time:",timestamp,"\nCSV:\n"..csv)
 
 		self.LastUpdated = timestamp or self.LastUpdated
 
-		local Values = string.split(csv, "\n")
+		local Rows = string.split(csv, "\n")
+		--print("CSV Split:",Rows)
 
 		local isChanged = false
 
-		for Row, Value in ipairs(Values) do
-			if Row == 1 then continue end -- Skip the header row of "Name,Type,Value"
+		local ColumnToKey = table.create(3)
 
-			local Components = string.split(Value, [[","]])
-			local Name = string.gsub(Components[1], "^\"","")
-			local Type = string.lower(Components[2])
-			local Value = string.gsub(Components[3], "\"$","")
+		for Row, RawValue in ipairs(Rows) do
+			local Components = string.split(RawValue, [[","]])
+			-- Trim the trailing " chars
+			Components[1] = string.gsub(Components[1], "^\"","")
+			Components[#Components] = string.gsub(Components[#Components], "\"$","")
 
-			--print("Components:",Name,Type,Value)
+			if Row == 1 then
+				-- Parse out the keys from the header row
+				for i, Comp in ipairs(Components) do
+					ColumnToKey[i] = Comp
+				end
+				continue
+			end
 
-			local Transformer = TypeTransformer[Type] or TypeTransformer.string
-			local FinalValue = Transformer(Value)
-			local CurrentValue = self.Values[Name]
+			-- Parse the typed values into dictionary based on the header row keys
+			local Value = table.create(#Components)
+			for i, Comp in ipairs(Components) do
+				local key = ColumnToKey[i]	
+				local typedComp = ConvertTyped(Comp)
+									
+				if (key == "") then continue end									
+													
+				Value[key] = typedComp
+			end
 
-			if CurrentValue ~= FinalValue then
+			local Name = Value.Name or Value.name or string.format("%d", Row) -- Index by name, or by row if no names exist
+			local OldValue = self.Values[Name]
+
+			if not DictEquals(OldValue, Value) then
 				isChanged = true
 
-				self.Values[Name] = FinalValue
+				self.Values[Name] = Value
 
 				local ValueChangeEvent = self._ValueChangeEvents[Name]
 				if ValueChangeEvent then
-					ValueChangeEvent:Fire(FinalValue,CurrentValue)
+					ValueChangeEvent:Fire(Value,OldValue)
 				end
 			end
 
