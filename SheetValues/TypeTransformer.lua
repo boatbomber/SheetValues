@@ -64,7 +64,7 @@ return {
 		return Color3.new(
 			tonumber(comps[1]) or 0,
 			tonumber(comps[2]) or 0,
-			tonumber(comps[3]) or 0,
+			tonumber(comps[3]) or 0
 		)
 	end,
 	["brickcolor"] = function(v)
@@ -75,7 +75,7 @@ return {
 		return Color3.fromRGB(
 			tonumber(comps[1]) or 0,
 			tonumber(comps[2]) or 0,
-			tonumber(comps[3]) or 0,
+			tonumber(comps[3]) or 0
 		)
 	end,
 	["cframe"] = function(v)
@@ -83,7 +83,7 @@ return {
 		return CFrame.new(
 			tonumber(comps[1]) or 0,
 			tonumber(comps[2]) or 0,
-			tonumber(comps[3]) or 0,
+			tonumber(comps[3]) or 0
 		)
 	end,
 	["enum"] = function(v)
