@@ -313,7 +313,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 				local now = DateTime.now().UnixTimestamp
 
-				self.LastSource =  "Google API"
+				self.LastSource = "Google API"
 				self:_setValues(response.Body, now)
 
 
@@ -323,7 +323,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 					if now <= (storeValues.Timestamp or 0) then
 						-- The store is actually more recent than us, use it instead
-						self.LastSource =  "Datastore Override"
+						self.LastSource = "Datastore Override"
 						self:_setValues(storeValues.CSV, storeValues.Timestamp)
 						return storeValues
 					end
@@ -336,8 +336,10 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 				if not s then warn(e) end
 
 				-- Send these values to all other servers
-				local s,e = pcall(MessagingService.PublishAsync, MessagingService, GUID, response.Body)
-				if not s then warn(e) end
+				if self.LastSource == "Google API" and #response.Body < 1000 then
+					local s,e = pcall(MessagingService.PublishAsync, MessagingService, GUID, response.Body)
+					if not s then warn(e) end
+				end
 
 				return true, "Values updated"
 			else
@@ -374,7 +376,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 		end
 
 		-- set these values
-		self.LastSource =  "Datastore"
+		self.LastSource = "Datastore"
 		self:_setValues(response.CSV, cacheTimestamp)
 
 		return true, "Values updated"
