@@ -431,7 +431,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 				local csv = Msg.Data
 				if csv == "TriggerStore" then
 					-- Datastore was updated with a file too large to send directly, this is a blank trigger
-					local storeSuccess, storeResult = self:_getFromStore()
+					local storeSuccess, storeResult = SheetManager:_getFromStore()
 				else
 					SheetManager.LastSource =  "MsgService Subscription"
 					SheetManager:_setValues(Msg.Data, math.floor(Msg.Sent))
