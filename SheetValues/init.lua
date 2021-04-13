@@ -336,8 +336,8 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 				if not s then warn(e) end
 
 				-- Send these values to all other servers
-				if self.LastSource == "Google API" and #response.Body < 1000 then
-					local s,e = pcall(MessagingService.PublishAsync, MessagingService, GUID, response.Body)
+				if self.LastSource == "Google API" then
+					local s,e = pcall(MessagingService.PublishAsync, MessagingService, GUID, #response.Body < 1000 and response.Body or "TriggerStore")
 					if not s then warn(e) end
 				end
 
@@ -428,8 +428,14 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 	pcall(function()
 		SheetManager._MessageListener = MessagingService:SubscribeAsync(GUID, function(Msg)
 			if math.floor(Msg.Sent) > SheetManager.LastUpdated then
-				SheetManager.LastSource =  "MsgService Subscription"
-				SheetManager:_setValues(Msg.Data, math.floor(Msg.Sent))
+				local csv = Msg.Data
+				if csv == "TriggerStore" then
+					-- Datastore was updated with a file too large to send directly, this is a blank trigger
+					local storeSuccess, storeResult = self:_getFromStore()
+				else
+					SheetManager.LastSource =  "MsgService Subscription"
+					SheetManager:_setValues(Msg.Data, math.floor(Msg.Sent))
+				end
 			end
 		end)
 	end)
