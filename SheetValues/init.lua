@@ -333,12 +333,12 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 					return storeValues
 				end)
-				if not s then warn(e) end
+				--if not s then warn(e) end
 
 				-- Send these values to all other servers
 				if self.LastSource == "Google API" then
 					local s,e = pcall(MessagingService.PublishAsync, MessagingService, GUID, #response.Body < 1000 and response.Body or "TriggerStore")
-					if not s then warn(e) end
+					--if not s then warn(e) end
 				end
 
 				return true, "Values updated"
@@ -391,11 +391,9 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 		-- Get successful, update complete
 		if storeSuccess then return end
 
-		-- Store values too old, get from http and update/share
-		if storeResult == "Cache expired" or storeResult == "Cache doesn't exist"  then
-			local httpSuccess, httpResult = self:_getFromHttp()
-			--print(httpSuccess,httpResult)
-		end
+		-- Store values too old or store failed, get from http and update/share
+		local httpSuccess, httpResult = self:_getFromHttp()
+		--print(httpSuccess,httpResult)
 	end
 
 	function SheetManager:GetValue(Name: string, Default: any)
