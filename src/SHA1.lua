@@ -1,13 +1,10 @@
-local md5_sha1_H = {0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0}
+local md5_sha1_H = { 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0 }
 local TWO56_POW_7 = 256 ^ 7
 
 local common_W = {} -- temporary table shared between all calculations (to avoid creating new temporary table every time)
 
 local bit32_band = bit32.band -- 2 arguments
-local bit32_bor = bit32.bor -- 2 arguments
 local bit32_bxor = bit32.bxor -- 2..5 arguments
-local bit32_lshift = bit32.lshift -- second argument is integer 0..31
-local bit32_rshift = bit32.rshift -- second argument is integer 0..31
 local bit32_lrotate = bit32.lrotate -- second argument is integer 0..31
 local bit32_rrotate = bit32.rrotate -- second argument is integer 0..31
 

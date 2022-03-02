@@ -51,7 +51,7 @@
 			AnotherProp = false
 		},
 	}
-	
+
 	It's not strictly enforced, but it is STRONGLY recommended that you have a "Name" Property so
 	that it will index your values by Name (will use row number if no Name prop exists), as it is much
 	easier to for you to work with.
@@ -166,7 +166,7 @@ local function ConvertTyped(Input)
 
 	-- Check if it's explicitly a string first
 	if string.match(lowerInput, "^string%(") then
-		return string.gsub(string.sub(lowerInput, 8), "%)$","")
+		return string.sub(Input, 8, #Input - 1)
 	end
 
 	-- Check for boolean input
@@ -181,11 +181,11 @@ local function ConvertTyped(Input)
 	end
 
 	-- Check for explicitly typed (ex: "Vector3(1,1,1)", "UDim2(0,100,0,80)")
-	for Type, Transformer in pairs(TypeTransformer) do
-		local Pattern = "^"..Type.."%("
-		if string.match(lowerInput, Pattern) then
-			local trimInput = string.gsub(string.sub(Input, #Pattern-1), "%)$","")
-			return Transformer(trimInput)
+	local Type, Value = string.match(Input, "^(%w+)%((.-)%)$")
+	if Type and Value then
+		local Transformer = TypeTransformer[string.lower(Type)]
+		if Transformer then
+			return Transformer(Value)
 		end
 	end
 
@@ -193,22 +193,24 @@ local function ConvertTyped(Input)
 end
 
 local function DictEquals(a, b)
-	if type(a) ~= type(b) then return false end
+	if type(a) ~= type(b) then
+		return false
+	end
 
 	for k, v in pairs(a) do
-		if (type(v)=="table") and (not DictEquals(b[k], v)) then
+		if (type(v) == "table") and (not DictEquals(b[k], v)) then
 			return false
 		end
-		if (b[k] ~= v) then
+		if b[k] ~= v then
 			return false
 		end
 	end
 
 	for k, v in pairs(b) do
-		if (type(v)=="table") and (not DictEquals(a[k], v)) then
+		if (type(v) == "table") and (not DictEquals(a[k], v)) then
 			return false
 		end
-		if (a[k] ~= v) then
+		if a[k] ~= v then
 			return false
 		end
 	end
@@ -219,12 +221,12 @@ end
 local SheetValues = {}
 
 function SheetValues.new(SpreadId: string, SheetId: string?)
-	assert(type(SpreadId)=="string", "Invalid SpreadId")
+	assert(type(SpreadId) == "string", "Invalid SpreadId")
 
 	-- Default SheetId to 0 as that's Google's default SheetId
 	SheetId = (SheetId or "0")
 
-	local GUID = SHA1(SpreadId.."||"..SheetId)
+	local GUID = SHA1(SpreadId .. "||" .. SheetId)
 
 	local ChangedEvent = Instance.new("BindableEvent")
 
@@ -240,40 +242,33 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 		_Alive = true,
 	}
 
-	function SheetManager:_setValues(csv: string, timestamp: number)
-		--print("Time:",timestamp,"\nCSV:\n"..csv)
+	function SheetManager:_setValues(json: string, timestamp: number)
+		local body = string.sub(string.sub(json, 1, #json - 2), 48)
+		local decodeSuccess, sheet = pcall(HttpService.JSONDecode, HttpService, body)
+		if not decodeSuccess then
+			return
+		end
+		if sheet.status ~= "ok" then
+			return
+		end
+
+		--print("Time:", timestamp, "\nJSON:", sheet)
 
 		self.LastUpdated = timestamp or self.LastUpdated
 
-		local Rows = string.split(csv, "\n")
-		--print("CSV Split:",Rows)
-
 		local isChanged = false
 
-		local ColumnToKey = table.create(3)
-
-		for Row, RawValue in ipairs(Rows) do
-			local Components = string.split(RawValue, [[","]])
-			-- Trim the trailing " chars
-			Components[1] = string.gsub(Components[1], "^\"","")
-			Components[#Components] = string.gsub(Components[#Components], "\"$","")
-
-			if Row == 1 then
-				-- Parse out the keys from the header row
-				for i, Comp in ipairs(Components) do
-					ColumnToKey[i] = Comp
-				end
-				continue
-			end
-
+		for Row, RowValue in ipairs(sheet.table.rows) do
 			-- Parse the typed values into dictionary based on the header row keys
-			local Value = table.create(#Components)
-			for i, Comp in ipairs(Components) do
-				local key = ColumnToKey[i]	
-				local typedComp = ConvertTyped(Comp)
-									
-				if (key == "") then continue end									
-													
+			local Value = table.create(#RowValue.c)
+			for i, Comp in ipairs(RowValue.c) do
+				local key = sheet.table.cols[i].label
+				local typedComp = ConvertTyped(Comp.v)
+
+				if key == "" then
+					continue
+				end
+
 				Value[key] = typedComp
 			end
 
@@ -287,10 +282,9 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 				local ValueChangeEvent = self._ValueChangeEvents[Name]
 				if ValueChangeEvent then
-					ValueChangeEvent:Fire(Value,OldValue)
+					ValueChangeEvent:Fire(Value, OldValue)
 				end
 			end
-
 		end
 
 		if isChanged then
@@ -301,7 +295,11 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 	function SheetManager:_getFromHttp()
 		-- Attempt to get values from Google's API
 		local success, response = pcall(HttpService.RequestAsync, HttpService, {
-			Url = string.format("https://docs.google.com/spreadsheets/d/%s/gviz/tq?tqx=out:csv&headers=1&gid=%s", SpreadId, SheetId),
+			Url = string.format(
+				"https://docs.google.com/spreadsheets/d/%s/gviz/tq?tqx=out:json&headers=1&gid=%s",
+				SpreadId,
+				SheetId
+			),
 			Method = "GET",
 			Headers = {},
 		})
@@ -316,20 +314,19 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 				self.LastSource = "Google API"
 				self:_setValues(response.Body, now)
 
-
 				-- Put these new values into the store
-				local s,e = pcall(self._DataStore.UpdateAsync, self._DataStore, "CSV", function(storeValues)
+				local s, e = pcall(self._DataStore.UpdateAsync, self._DataStore, "JSON", function(storeValues)
 					storeValues = storeValues or table.create(2)
 
 					if now <= (storeValues.Timestamp or 0) then
 						-- The store is actually more recent than us, use it instead
 						self.LastSource = "Datastore Override"
-						self:_setValues(storeValues.CSV, storeValues.Timestamp)
+						self:_setValues(storeValues.JSON, storeValues.Timestamp)
 						return storeValues
 					end
 
 					storeValues.Timestamp = now
-					storeValues.CSV = response.Body
+					storeValues.JSON = response.Body
 
 					return storeValues
 				end)
@@ -337,7 +334,12 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 				-- Send these values to all other servers
 				if self.LastSource == "Google API" then
-					local s,e = pcall(MessagingService.PublishAsync, MessagingService, GUID, #response.Body < 1000 and response.Body or "TriggerStore")
+					local s, e = pcall(
+						MessagingService.PublishAsync,
+						MessagingService,
+						GUID,
+						#response.Body < 1000 and response.Body or "TriggerStore"
+					)
 					--if not s then warn(e) end
 				end
 
@@ -355,7 +357,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 	function SheetManager:_getFromStore()
 		-- Attempt to get values from store
-		local success, response = pcall(self._DataStore.GetAsync, self._DataStore, "CSV")
+		local success, response = pcall(self._DataStore.GetAsync, self._DataStore, "JSON")
 		if not success then
 			-- Store failure
 			return false, response
@@ -377,19 +379,20 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 		-- set these values
 		self.LastSource = "Datastore"
-		self:_setValues(response.CSV, cacheTimestamp)
+		self:_setValues(response.JSON, cacheTimestamp)
 
 		return true, "Values updated"
 	end
 
 	function SheetManager:UpdateValues()
-
 		-- Get values from DataStore cache
 		local storeSuccess, storeResult = self:_getFromStore()
 		--print(storeSuccess,storeResult)
 
 		-- Get successful, update complete
-		if storeSuccess then return end
+		if storeSuccess then
+			return
+		end
 
 		-- Store values too old or store failed, get from http and update/share
 		local httpSuccess, httpResult = self:_getFromHttp()
@@ -416,7 +419,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 		end
 
 		ChangedEvent:Destroy()
-		for _,Event in pairs(self._ValueChangeEvents) do
+		for _, Event in pairs(self._ValueChangeEvents) do
 			Event:Destroy()
 		end
 
@@ -426,13 +429,13 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 	pcall(function()
 		SheetManager._MessageListener = MessagingService:SubscribeAsync(GUID, function(Msg)
 			if math.floor(Msg.Sent) > SheetManager.LastUpdated then
-				local csv = Msg.Data
-				if csv == "TriggerStore" then
+				local json = Msg.Data
+				if json == "TriggerStore" then
 					-- Datastore was updated with a file too large to send directly, this is a blank trigger
 					local storeSuccess, storeResult = SheetManager:_getFromStore()
 				else
-					SheetManager.LastSource =  "MsgService Subscription"
-					SheetManager:_setValues(Msg.Data, math.floor(Msg.Sent))
+					SheetManager.LastSource = "MsgService Subscription"
+					SheetManager:_setValues(json, math.floor(Msg.Sent))
 				end
 			end
 		end)
@@ -448,8 +451,6 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 	SheetManager:UpdateValues()
 
 	return SheetManager
-
 end
-
 
 return SheetValues
