@@ -291,7 +291,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 	function SheetManager:_getFromHttp()
 		-- Attempt to get values from Google's API
-		local success, response = pcall(HttpService.RequestAsync, HttpService, {
+		local httpSuccess, httpResponse = pcall(HttpService.RequestAsync, HttpService, {
 			Url = string.format(
 				"https://docs.google.com/spreadsheets/d/%s/gviz/tq?tqx=out:json&headers=1&gid=%s",
 				SpreadId,
@@ -301,56 +301,54 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 			Headers = {},
 		})
 
-		if success then
-			-- http request went through, decode and handle it
-			if response.Success then
-				-- request success, set these values
-
-				local now = DateTime.now().UnixTimestamp
-				local json = string.match(response.Body, "{.+}")
-
-				self.LastSource = "Google API"
-				self:_setValues(json, now)
-
-				-- Put these new values into the store
-				local s, e = pcall(self._DataStore.UpdateAsync, self._DataStore, "JSON", function(storeValues)
-					storeValues = storeValues or table.create(2)
-
-					if now <= (storeValues.Timestamp or 0) then
-						-- The store is actually more recent than us, use it instead
-						self.LastSource = "Datastore Override"
-						self:_setValues(storeValues.JSON, storeValues.Timestamp)
-						return storeValues
-					end
-
-					storeValues.Timestamp = now
-					storeValues.JSON = json
-
-					return storeValues
-				end)
-				--if not s then warn(e) end
-
-				-- Send these values to all other servers
-				if self.LastSource == "Google API" then
-					local s, e = pcall(
-						MessagingService.PublishAsync,
-						MessagingService,
-						GUID,
-						#json < 1000 and json or "TriggerStore"
-					)
-					--if not s then warn(e) end
-				end
-
-				return true, "Values updated"
-			else
-				-- API failure
-				return false, response.StatusCode
-			end
-		else
+		if not httpSuccess then
 			-- Http failure
-			return false, response
+			return false, httpResponse
 		end
-		--]=]
+
+		if not httpResponse.Success then
+			-- API failure
+			return false, httpResponse.StatusCode
+		end
+
+		-- Request successful, now set these values
+
+		local now = DateTime.now().UnixTimestamp
+		local json = string.match(httpResponse.Body, "{.+}")
+
+		self.LastSource = "Google API"
+		self:_setValues(json, now)
+
+		-- Put these new values into the store
+		local datastoreSuccess, datastoreResponse = pcall(self._DataStore.UpdateAsync, self._DataStore, "JSON", function(storeValues)
+			storeValues = storeValues or table.create(2)
+
+			if now <= (storeValues.Timestamp or 0) then
+				-- The store is actually more recent than us, use it instead
+				self.LastSource = "Datastore Override"
+				self:_setValues(storeValues.JSON, storeValues.Timestamp)
+				return storeValues
+			end
+
+			storeValues.Timestamp = now
+			storeValues.JSON = json
+
+			return storeValues
+		end)
+		--if not datastoreSuccess then warn(datastoreResponse) end
+
+		-- Send these values to all other servers
+		if self.LastSource == "Google API" then
+			local msgSuccess, msgResponse = pcall(
+				MessagingService.PublishAsync,
+				MessagingService,
+				GUID,
+				#json < 1000 and json or "TriggerStore"
+			)
+			--if not msgSuccess then warn(msgResponse) end
+		end
+
+		return true, "Values updated"
 	end
 
 	function SheetManager:_getFromStore()
@@ -426,15 +424,19 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 	pcall(function()
 		SheetManager._MessageListener = MessagingService:SubscribeAsync(GUID, function(Msg)
-			if math.floor(Msg.Sent) > SheetManager.LastUpdated then
-				local json = Msg.Data
-				if json == "TriggerStore" then
-					-- Datastore was updated with a file too large to send directly, this is a blank trigger
-					local storeSuccess, storeResult = SheetManager:_getFromStore()
-				else
-					SheetManager.LastSource = "MsgService Subscription"
-					SheetManager:_setValues(json, math.floor(Msg.Sent))
-				end
+			local msgTimestamp = math.floor(Msg.Sent)
+			if msgTimestamp <= SheetManager.LastUpdated then
+				-- Ignore outdated data
+				return
+			end
+
+			local json = Msg.Data
+			if json == "TriggerStore" then
+				-- Datastore was updated with a file too large to send directly, this is a blank trigger
+				local storeSuccess, storeResult = SheetManager:_getFromStore()
+			else
+				SheetManager.LastSource = "MsgService Subscription"
+				SheetManager:_setValues(json, msgTimestamp)
 			end
 		end)
 	end)
