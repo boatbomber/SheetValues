@@ -243,8 +243,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 	}
 
 	function SheetManager:_setValues(json: string, timestamp: number)
-		local body = string.sub(string.sub(json, 1, #json - 2), 48)
-		local decodeSuccess, sheet = pcall(HttpService.JSONDecode, HttpService, body)
+		local decodeSuccess, sheet = pcall(HttpService.JSONDecode, HttpService, json)
 		if not decodeSuccess then
 			return
 		end
@@ -263,13 +262,11 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 			local Value = table.create(#RowValue.c)
 			for i, Comp in ipairs(RowValue.c) do
 				local key = sheet.table.cols[i].label
-				local typedComp = ConvertTyped(Comp.v)
-
-				if key == "" then
+				if not key or key == "" then
 					continue
 				end
 
-				Value[key] = typedComp
+				Value[key] = ConvertTyped(Comp.v)
 			end
 
 			local Name = Value.Name or Value.name or string.format("%d", Row) -- Index by name, or by row if no names exist
@@ -310,9 +307,10 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 				-- request success, set these values
 
 				local now = DateTime.now().UnixTimestamp
+				local json = string.match(response.Body, "{.+}")
 
 				self.LastSource = "Google API"
-				self:_setValues(response.Body, now)
+				self:_setValues(json, now)
 
 				-- Put these new values into the store
 				local s, e = pcall(self._DataStore.UpdateAsync, self._DataStore, "JSON", function(storeValues)
@@ -326,7 +324,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 					end
 
 					storeValues.Timestamp = now
-					storeValues.JSON = response.Body
+					storeValues.JSON = json
 
 					return storeValues
 				end)
@@ -338,7 +336,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 						MessagingService.PublishAsync,
 						MessagingService,
 						GUID,
-						#response.Body < 1000 and response.Body or "TriggerStore"
+						#json < 1000 and json or "TriggerStore"
 					)
 					--if not s then warn(e) end
 				end
