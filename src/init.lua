@@ -441,12 +441,12 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 		end)
 	end)
 
-	coroutine.wrap(function()
+	task.defer(function()
 		while SheetManager._Alive do
-			wait(UPDATE_RATE)
+			task.wait(UPDATE_RATE)
 			SheetManager:UpdateValues()
 		end
-	end)()
+	end)
 
 	SheetManager:UpdateValues()
 
