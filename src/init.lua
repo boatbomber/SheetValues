@@ -164,24 +164,48 @@ local TypeTransformer = require(script.TypeTransformer)
 local function ConvertTyped(Input)
 	local lowerInput = string.lower(Input)
 
-	-- Check if it's explicitly a string first
-	if string.match(lowerInput, "^string%(") then
-		return string.sub(Input, 8, #Input - 1)
+	-- Check if explicitly string
+	if string.match(lowerInput, "^[\"']") and string.match(lowerInput, "[\"']$") then
+		return string.sub(Input, 2, #Input - 1)
 	end
 
-	-- Check for boolean input
+	-- Check if boolean
 	if lowerInput == "true" or lowerInput == "false" then
 		return lowerInput == "true"
 	end
 
-	-- Check for number input
+	-- Check if number
 	local n = tonumber(Input)
 	if tostring(n) == Input then
 		return n
 	end
 
-	-- Check for explicitly typed (ex: "Vector3(1,1,1)", "UDim2(0,100,0,80)")
-	local Type, Value = string.match(Input, "^(%w+)%((.-)%)$")
+	-- Check if table
+	if string.match(lowerInput, "^{") and string.match(lowerInput, "}$") then
+		local output = {}
+
+		-- TODO: Instead of splitting by commas, parse it yourself so that Vector3(1,1,1) doesn't cause 2 incorrect splits
+		local keyvalues = string.split(string.sub(Input, 2, #Input - 1), ",")
+		for i, keyvalue in ipairs(keyvalues) do
+			-- Remove leading whitespace
+			keyvalue = string.gsub(keyvalue, "^ ", "")
+
+			-- Check if dictionary
+			local key, value = string.match(keyvalue, "(%w+)%s*=%s*(.+)")
+			if key and value then
+				output[key] = ConvertTyped(value)
+				continue
+			end
+
+			-- Default to array
+			output[i] = ConvertTyped(keyvalue)
+		end
+
+		return output
+	end
+
+	-- Check if explicitly typed (ex: "Vector3.new(1,1,1)", "UDim2.new(0,100,0,80)")
+	local Type, Value = string.match(Input, "^(%w+)%.?[new]*%((.-)%)$")
 	if Type and Value then
 		local Transformer = TypeTransformer[string.lower(Type)]
 		if Transformer then
@@ -189,6 +213,7 @@ local function ConvertTyped(Input)
 		end
 	end
 
+	-- Fallback to string
 	return Input
 end
 
@@ -266,7 +291,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 					continue
 				end
 
-				Value[key] = ConvertTyped(Comp.v)
+				Value[key] = ConvertTyped(Comp.v or "")
 			end
 
 			local Name = Value.Name or Value.name or string.format("%d", Row) -- Index by name, or by row if no names exist
@@ -320,21 +345,26 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 		self:_setValues(json, now)
 
 		-- Put these new values into the store
-		local datastoreSuccess, datastoreResponse = pcall(self._DataStore.UpdateAsync, self._DataStore, "JSON", function(storeValues)
-			storeValues = storeValues or table.create(2)
+		local datastoreSuccess, datastoreResponse = pcall(
+			self._DataStore.UpdateAsync,
+			self._DataStore,
+			"JSON",
+			function(storeValues)
+				storeValues = storeValues or table.create(2)
 
-			if now <= (storeValues.Timestamp or 0) then
-				-- The store is actually more recent than us, use it instead
-				self.LastSource = "Datastore Override"
-				self:_setValues(storeValues.JSON, storeValues.Timestamp)
+				if now <= (storeValues.Timestamp or 0) then
+					-- The store is actually more recent than us, use it instead
+					self.LastSource = "Datastore Override"
+					self:_setValues(storeValues.JSON, storeValues.Timestamp)
+					return storeValues
+				end
+
+				storeValues.Timestamp = now
+				storeValues.JSON = json
+
 				return storeValues
 			end
-
-			storeValues.Timestamp = now
-			storeValues.JSON = json
-
-			return storeValues
-		end)
+		)
 		--if not datastoreSuccess then warn(datastoreResponse) end
 
 		-- Send these values to all other servers
