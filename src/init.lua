@@ -56,11 +56,14 @@
 	that it will index your values by Name (will use row number if no Name prop exists), as it is much
 	easier to for you to work with.
 
-	If you have a boolean or number entered, it will attempt to convert the string into your intended datatype.
-	To create special types, you can explicitly mark them by having the property be "Type(val)", like "Vector3(1,0,3)"
+	SheetValues will attempt to convert the string in each cell into your intended datatype, using familiar Lua syntax.
+	Numbers and booleans are written plainly, strings are wrapped in quotes, and tables are wrapped in {}.
+	Special Roblox types are written as Type.new(...), to align with their Luau counterparts.
+	It will default back to string if it cannot figure out a type, but it is recommended to explicilty write
+	your strings in "quotes" to avoid relying on this.
 
-	Supported explicit property Types (not case sensitive):
-	- string (for ensuring a number/boolean remains a string)
+	Supported property Types:
+	- string
 	- array
 	- dictionary
 	- Vector3
@@ -76,13 +79,13 @@
 
 	Sample Sheet:
 
-	Name                Prop                                              SecondaryProp           AnyPropNameYouLike        [Recommend that you freeze Row 1]
-	BoostDirection      Vector3(10, 2, 6.2)                               100                     10000
-	SpeedMultiplier     0.3 [will autodetect and convert to number]       1                       FALSE
-	DebugEnabled        TRUE [will autodetect and convert to boolean]     JSONstring              you get the point
-	DontAutodetect      string(TRUE) [will NOT convert to boolean]        TRUE                    you can add as many columns as you need
-	ArrayOfStrings      array(firstIndex,secondIndex,thirdIndex)          Vector2(5,2)            and easily set the value type
-	DictOfKeyedStrings  dictionary(key1=stringvalue,key2=anotherstring)   UDim2(0.3,-10,0,350)    it's great!
+	Name                Prop                                              SecondaryProp               AnyPropNameYouLike        [Recommend that you freeze Row 1]
+	BoostDirection      Vector3.new(10, 2, 6.2)                           100                         10000
+	SpeedMultiplier     0.3 [will autodetect and convert to number]       1                           FALSE
+	DebugEnabled        TRUE [will autodetect and convert to boolean]     "JSONstring"                "you get the point"
+	DontAutodetect      "TRUE" [will NOT convert to boolean]       	      TRUE                        "you can add as many columns as you need"
+	ArrayOfNumbers      {1, 2, 3}                                         Vector2.new(5,2)            "and easily set the value type"
+	DictOfStrings       {Foo = "hello", Bar = "world"}                    UDim2.new(0.3,-10,0,350)    "it's great!"
 
 	API:
 	-------
