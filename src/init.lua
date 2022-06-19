@@ -162,6 +162,11 @@ local SHA1 = require(script.SHA1)
 local TypeTransformer = require(script.TypeTransformer)
 
 local function ConvertTyped(Input)
+	if type(Input) ~= "string" then
+		-- Already typed
+		return Input
+	end
+
 	local lowerInput = string.lower(Input)
 
 	-- Check if explicitly string
