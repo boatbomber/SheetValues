@@ -299,7 +299,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 					continue
 				end
 
-				Value[key] = ConvertTyped(Comp.v or "")
+				Value[key] = ConvertTyped(if Comp.v ~= nil then Comp.v else "")
 			end
 
 			local Name = Value.Name or Value.name or string.format("%d", Row) -- Index by name, or by row if no names exist
