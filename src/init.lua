@@ -433,8 +433,9 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 		--print(httpSuccess,httpResult)
 	end
 
-	function SheetManager:GetValue(Name: string, Default: any)
-		return self.Values[Name] or Default
+	function SheetManager:GetValue(Name: string, Default: any?)
+		local value = self.Values[Name]
+		return if value ~= nil then value else Default
 	end
 
 	function SheetManager:GetValueChangedSignal(Name: string)
