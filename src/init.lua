@@ -259,7 +259,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 	-- Default SheetId to 0 as that's Google's default SheetId
 	SheetId = (SheetId or "0")
 
-	local GUID = SHA1(SpreadId .. "||" .. SheetId)
+	local GUID = SHA1(SpreadId .. "||" .. SheetId :: string)
 
 	local ChangedEvent = Instance.new("BindableEvent")
 
@@ -272,6 +272,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 		_ValueChangeEvents = {},
 		_DataStore = DatastoreService:GetDataStore(GUID, "SheetValues"),
+		_MessageListener = nil,
 		_Alive = true,
 	}
 
@@ -328,7 +329,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 			Url = string.format(
 				"https://docs.google.com/spreadsheets/d/%s/gviz/tq?tqx=out:json&headers=1&gid=%s",
 				SpreadId,
-				SheetId
+				SheetId :: string
 			),
 			Method = "GET",
 			Headers = {},
