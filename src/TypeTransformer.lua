@@ -21,7 +21,7 @@ return {
 		local values = string.split(v, ",")
 		local dict = table.create(#values)
 
-		for _, value in ipairs(values) do
+		for _, value in values do
 			local components = string.split(value, "=")
 			dict[string.gsub(string.gsub(components[1], "^ ", ""), " $", "")] = string.gsub(components[2], "^ ", "")
 		end

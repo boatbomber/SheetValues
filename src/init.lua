@@ -194,7 +194,7 @@ local function ConvertTyped(Input)
 
 		-- TODO: Instead of splitting by commas, parse it yourself so that Vector3(1,1,1) doesn't cause 2 incorrect splits
 		local keyvalues = string.split(string.sub(Input, 2, #Input - 1), ",")
-		for i, keyvalue in ipairs(keyvalues) do
+		for i, keyvalue in keyvalues do
 			-- Remove leading whitespace
 			keyvalue = string.gsub(keyvalue, "^ ", "")
 
@@ -230,16 +230,23 @@ local function DictEquals(a, b)
 		return false
 	end
 
-	for k, v in pairs(a) do
+	local checkedKeys = {}
+
+	for k, v in a do
 		if (type(v) == "table") and (not DictEquals(b[k], v)) then
 			return false
 		end
 		if b[k] ~= v then
 			return false
 		end
+		checkedKeys[k] = true
 	end
 
-	for k, v in pairs(b) do
+	for k, v in b do
+		if checkedKeys[k] then
+			continue
+		end
+
 		if (type(v) == "table") and (not DictEquals(a[k], v)) then
 			return false
 		end
@@ -291,10 +298,10 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 		local isChanged = false
 
-		for Row, RowValue in ipairs(sheet.table.rows) do
+		for Row, RowValue in sheet.table.rows do
 			-- Parse the typed values into dictionary based on the header row keys
 			local Value = table.create(#RowValue.c)
-			for i, Comp in ipairs(RowValue.c) do
+			for i, Comp in RowValue.c do
 				local key = sheet.table.cols[i].label
 				if not key or key == "" then
 					continue
@@ -455,7 +462,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 		end
 
 		ChangedEvent:Destroy()
-		for _, Event in pairs(self._ValueChangeEvents) do
+		for _, Event in self._ValueChangeEvents do
 			Event:Destroy()
 		end
 

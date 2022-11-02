@@ -1,7 +1,7 @@
 [package]
 name = "boatbomber/sheetvalues"
 description = "Use Google Sheets as a live value updater for Roblox games."
-version = "3.0.0"
+version = "3.0.1"
 license = "MIT"
 authors = ["boatbomber (https://boatbomber.com)"]
 registry = "https://github.com/upliftgames/wally-index"
