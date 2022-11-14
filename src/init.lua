@@ -495,7 +495,7 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 		end
 	end)
 
-	SheetManager:UpdateValues()
+	task.spawn(SheetManager.UpdateValues, SheetManager)
 
 	return SheetManager
 end
