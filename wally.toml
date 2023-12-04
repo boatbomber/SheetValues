@@ -8,3 +8,6 @@ registry = "https://github.com/upliftgames/wally-index"
 realm = "server"
 include = ["src", "src/**", "wally.toml", "wally.lock", "default.project.json"]
 exclude = ["**"]
+
+[dependencies]
+promise = "evaera/promise@4.0.0"

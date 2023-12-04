@@ -160,6 +160,7 @@ local UPDATE_RATE = 30 -- every X seconds
 local HttpService = game:GetService("HttpService")
 local DatastoreService = game:GetService("DataStoreService")
 local MessagingService = game:GetService("MessagingService")
+local Promise = require(script.Parent.promise)
 
 local SHA1 = require(script.SHA1)
 local TypeTransformer = require(script.TypeTransformer)
@@ -385,12 +386,8 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 
 		-- Send these values to all other servers
 		if self.LastSource == "Google API" then
-			local msgSuccess, msgResponse = pcall(
-				MessagingService.PublishAsync,
-				MessagingService,
-				GUID,
-				#json < 1000 and json or "TriggerStore"
-			)
+			local msgSuccess, msgResponse =
+				pcall(MessagingService.PublishAsync, MessagingService, GUID, #json < 1000 and json or "TriggerStore")
 			--if not msgSuccess then warn(msgResponse) end
 		end
 
@@ -495,9 +492,10 @@ function SheetValues.new(SpreadId: string, SheetId: string?)
 		end
 	end)
 
-	task.spawn(SheetManager.UpdateValues, SheetManager)
-
-	return SheetManager
+	return Promise.new(function(resolve, reject, onCancel)
+		SheetManager:UpdateValues()
+		resolve(SheetManager)
+	end)
 end
 
 return SheetValues
