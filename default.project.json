@@ -1,6 +1,6 @@
 {
-	"name": "SheetValues",
-	"tree": {
-		"$path": "src"
-	}
+  "name": "sheetvalues",
+  "tree": {
+    "$path": "src"
+  }
 }
