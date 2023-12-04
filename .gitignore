@@ -11,3 +11,4 @@ sourcemap.json
 
 # VS Code files
 .vscode/*
+Packages/

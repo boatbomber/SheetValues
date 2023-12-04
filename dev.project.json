@@ -1,0 +1,17 @@
+{
+  "name": "SheetValuesDev",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "Test": {
+        "$path": "Test"
+      },
+      "Packages": {
+        "$path": "Packages",
+        "SheetValues": {
+          "$path": "src"
+        }
+      }
+    }
+  }
+}
